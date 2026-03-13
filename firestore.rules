@@ -1,0 +1,99 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == "mokibmirda@gmail.com" ||
+        request.auth.token.email == "admin@rentrevision.pro" ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'role']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.role in ['admin', 'tenant'] &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() < 20)) &&
+             (!('email' in data) || (data.email is string && data.email.size() < 100));
+    }
+
+    function isValidPayment(data) {
+      return data.keys().hasAll(['tenantId', 'amount', 'month']) &&
+             data.tenantId is string &&
+             data.amount is number && data.amount >= 0 &&
+             data.month is string && data.month.size() == 7;
+    }
+
+    function isValidComplaint(data) {
+      return data.keys().hasAll(['tenantId', 'title', 'description', 'status']) &&
+             data.tenantId is string &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.description is string && data.description.size() > 0 && data.description.size() < 2000 &&
+             data.status in ['pending', 'in-progress', 'resolved'];
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    // Users Collection
+    match /users/{userId} {
+      // Allow read for login (unauthenticated) and for authenticated users/admins.
+      allow read: if true;
+      
+      // Authenticated users can create their own profile. Admins can create any profile.
+      allow create: if isValidUser(request.resource.data) && (
+        (isAuthenticated() && isOwner(userId)) || isAdmin()
+      );
+      
+      // Admins can update any profile. Users can update their own profile (but not change their role).
+      allow update: if isValidUser(request.resource.data) && (
+        isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role)
+      );
+      
+      // Only admins can delete users.
+      allow delete: if isAdmin();
+    }
+
+    // Payments Collection
+    match /payments/{paymentId} {
+      // Admins can read all payments. Tenants can read their own payments.
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.tenantId == request.auth.uid);
+      
+      // Only admins can create or update payment records.
+      allow create: if isAdmin() && isValidPayment(request.resource.data);
+      allow update: if isAdmin() && isValidPayment(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    // Complaints Collection
+    match /complaints/{complaintId} {
+      // Admins can read all complaints. Tenants can read their own complaints.
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.tenantId == request.auth.uid);
+      
+      // Tenants can create complaints for themselves. Admins can create any complaint.
+      allow create: if (isAdmin() || (isAuthenticated() && request.resource.data.tenantId == request.auth.uid)) && 
+                    isValidComplaint(request.resource.data);
+      
+      // Admins can update any complaint (e.g., status). Tenants can update their own complaints.
+      allow update: if (isAdmin() || (isAuthenticated() && resource.data.tenantId == request.auth.uid)) && 
+                    isValidComplaint(request.resource.data);
+      
+      // Only admins can delete complaints.
+      allow delete: if isAdmin();
+    }
+  }
+}

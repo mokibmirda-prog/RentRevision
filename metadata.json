@@ -1,0 +1,9 @@
+{
+  "name": "Rent Revision Pro",
+  "description": "An AI-powered Property & Tenant Management PWA with Admin and Tenant portals, featuring a JARVIS-like building concierge.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}

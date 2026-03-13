@@ -1,0 +1,78 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile information including role and contact details.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "name": { "type": "string", "description": "Full name" },
+        "email": { "type": "string", "description": "Email address" },
+        "phone": { "type": "string", "description": "Phone number" },
+        "role": { "type": "string", "enum": ["admin", "tenant"], "description": "User role" },
+        "unit": { "type": "string", "description": "Assigned unit number (for tenants)" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation timestamp" }
+      },
+      "required": ["uid", "name", "role"]
+    },
+    "Tenant": {
+      "title": "Tenant Details",
+      "description": "Detailed information about a tenant's lease.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "User UID" },
+        "unit": { "type": "string", "description": "Unit number" },
+        "rentAmount": { "type": "number", "description": "Monthly rent amount in AED" },
+        "startDate": { "type": "string", "format": "date", "description": "Lease start date" },
+        "status": { "type": "string", "enum": ["active", "inactive"], "description": "Lease status" }
+      },
+      "required": ["uid", "unit", "rentAmount"]
+    },
+    "Payment": {
+      "title": "Rent Payment",
+      "description": "Record of a rent payment.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string", "description": "UID of the tenant" },
+        "amount": { "type": "number", "description": "Amount paid" },
+        "month": { "type": "string", "description": "Month the payment is for (e.g., '2026-03')" },
+        "date": { "type": "string", "format": "date-time", "description": "Payment date" },
+        "status": { "type": "string", "enum": ["paid", "pending"], "description": "Payment status" },
+        "receiptUrl": { "type": "string", "description": "URL to the receipt" }
+      },
+      "required": ["tenantId", "amount", "month", "date", "status"]
+    },
+    "Complaint": {
+      "title": "Maintenance Complaint",
+      "description": "A maintenance request or complaint submitted by a tenant.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string", "description": "UID of the tenant" },
+        "unit": { "type": "string", "description": "Unit number" },
+        "subject": { "type": "string", "description": "Complaint subject" },
+        "description": { "type": "string", "description": "Detailed description" },
+        "status": { "type": "string", "enum": ["open", "in-progress", "resolved"], "description": "Current status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Submission timestamp" }
+      },
+      "required": ["tenantId", "subject", "description", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/tenants/{tenantId}": {
+      "schema": "Tenant",
+      "description": "Tenant lease details"
+    },
+    "/payments/{paymentId}": {
+      "schema": "Payment",
+      "description": "Rent payment records"
+    },
+    "/complaints/{complaintId}": {
+      "schema": "Complaint",
+      "description": "Maintenance complaints"
+    }
+  }
+}
